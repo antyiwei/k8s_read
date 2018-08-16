@@ -1,0 +1,81 @@
+1.主结构体的各字段 意思。
+2.重要的方法
+3.这一部分的目的
+4. 在哪里初始化。主要用于哪里
+
+5. 使用自己掌握的知识，将各个知识点，写个demo.总的串联一个，写点说明
+
+
+参考：
+我是怎么阅读kubernetes源代码的？：这种提出问题、解决问题的源码阅读方式是最值得推荐的，可以参考下 http://dockone.io/article/895
+kubernetes源码分析 – kubelet组件：使用思维导图阅读源码是向这位博主学习的 https://blog.csdn.net/zhaoguoguang/article/details/51225553
+【原创】k8s源码分析——kube-apiserver分析（1）：写的很渣，不知道博主分析源码是做什么的 https://blog.csdn.net/screscent/article/details/50923055
+
+图解kubernetes https://mp.weixin.qq.com/s/BTgYpSHUXaAEYjvrCEPK5A
+
+
+
+Kubelet 「节点上的 Pod 管家」
+负责 Node 节点上 Pod 的创建、修改、监控、删除等全生命周期的管理。
+
+定时上报本地 Node 的状态信息给 API Server。
+
+Kubelet 是 Master API Server 和 Minion / Node 之间的桥梁，接收 Master API Server 分配给它的 Commands 和 Work。
+
+Kubelet 通过 Kube ApiServer 间接与 Etcd 集群交互来读取集群配置信息。
+
+Kubelet 在 Node 上做的主要工作具体如下：1. 设置容器的环境变量、给容器绑定 Volume、给容器绑定 Port、根据指定的 Pod 运行一个单一容器、给指定的 Pod 创建 Network 容器。2. 同步 Pod 的状态，从 cAdvisor 获取 Container Info、 Pod Info、 Root Info、 Machine info。3. 在容器中运行命令、杀死容器、删除 Pod 的所有容器。
+
+
+kubelet 分析博客
+https://www.cnblogs.com/slgkaifa/p/7308368.html
+
+
+
+
+// Package cobra is a commander providing a simple interface to create powerful modern CLI interfaces. In addition to providing an interface, Cobra simultaneously provides a controller to organize your application code.
+// Package cobra是一个指挥官，提供了一个简单的界面来创建强大的现代CLI界面。除了提供界面外，Cobra还提供了一个控制器来组织您的应用程序代码。
+
+
+
+# kubelet
+kubelet是在每个上运行的主要“节点代理”节点。 kubelet适用于PodSpec。 PodSpec是YAML或JSON对象描述一个pod。 kubelet采用通过提供的一组PodSpecs各种机制（主要通过apiserver）并确保容器在那些PodSpecs中描述的运行和健康。 kubelet无法管理不是由Kubernetes创造的容器。
+
+除了来自apiserver的PodSpec之外，容器有三种方式清单可以提供给Kubelet。
+
+File：Path在命令行上作为标志传递。将监视此路径下的文件定期更新。监控时间默认为20秒，可配置通过一面旗帜。
+
+HTTP端点：在命令行上作为参数传递的HTTP端点。这个端点每20秒检查一次（也可以用标志配置）。
+
+HTTP服务器：kubelet还可以侦听HTTP并响应简单的API（目前未提及）提交新清单。
+
+
+
+首先，注册所有的version版本，用于版本管理。
+
+然后注册了所有的group版本，用于group管理
+
+最后，针对group和version注册了RESTMapper。
+
+
+
+RESTMapper用于管理所有对象的信息。外部要获取的话，直接通过version，group获取到RESTMapper，然后通过kind类型可以获取到相对应的信息
+
+
+
+InfraContainer：infrastructure container。Kubelet会为每个Pod先创建一个InfraContainer，同一个Pod中的其他Container共享此容器的Pid、Network、IPC等Namespace及Volumes
+Mirror Pod：Kubelet支持从Api server、文件、URL三种方式获取Pod信息。其中通过后两种方式获取到的Pod称之为Static Pod，Kubelet会为其在Api Server中创建一个Mirror Pod
+
+除了来自apiserver的PodSpec之外，还有三种方法可以将容器清单提供给Kubelet：
+File：Path在命令行上作为标志传递。此文件每20秒重新检查一次（可使用标志进行配置）。
+HTTP端点：在命令行上作为参数传递的HTTP端点。每20秒检查一次此端点（也可使用标志进行配置）。
+HTTP服务器：kubelet还可以侦听HTTP并响应一个简单的API（当前未检测到）以提交新的清单。
+
+Probe：探针，可以在Pod定义文件中设置的用于检查容器是否健康的命令。可以使用ExecAction、TcpSocketAction、HTTPGetAction
+cAdvisor：kubenetes集成的一个docker资源使用率和性能特性的工具。kubelet在启动时会启动cAdvisor。
+
+
+
+源码为k8s v1.1.1稳定版本
+
+kubelet代码比较复杂，主要是因为其担负的任务比较多。下面我们将慢慢的分析
